@@ -272,7 +272,6 @@ public class WatchFaceService extends CanvasWatchFaceService {
             String dayText = String.format(Locale.getDefault(), "%1$ta", mCalendar);
             canvas.drawText(dayText, x, y, mDatePaint);
 
-
         }
 
         @Override
