@@ -22,6 +22,7 @@ import com.wear.R;
 
 import java.util.Calendar;
 import java.util.Date;
+import java.util.Locale;
 import java.util.TimeZone;
 import java.util.concurrent.TimeUnit;
 
@@ -250,13 +251,26 @@ public class WatchFaceService extends CanvasWatchFaceService {
             float x = mXOffset;
             String hourString = formatTwoDigitNumber(mCalendar.get(Calendar.HOUR_OF_DAY));
             canvas.drawText(hourString, x, mYOffset, mHourPaint);
-            x += mHourPaint.measureText(hourString);
+//            x += mHourPaint.measureText(hourString);
 //                canvas.drawText(COLON_STRING, x, mYOffset, mColonPaint);
             x += mColonWidth;
 
             // Draw the minutes.
+            float y = mYOffset;
+            y += mHourPaint.measureText(hourString);
             String minuteString = formatTwoDigitNumber(mCalendar.get(Calendar.MINUTE));
-            canvas.drawText(minuteString, x, mYOffset, mMinutePaint);
+            canvas.drawText(minuteString, mXOffset, y, mMinutePaint);
+            x += mColonWidth;
+
+            //  Draw date and month
+            x += mMinutePaint.measureText(minuteString);
+            String dateText = String.format(Locale.getDefault(), "%1$tb %1$te", mCalendar);
+            canvas.drawText(dateText, x, y, mDatePaint);
+
+            //  Draw day
+            y -= mDatePaint.measureText(dateText)/3;
+            String dayText = String.format(Locale.getDefault(), "%1$ta", mCalendar);
+            canvas.drawText(dayText, x, y, mDatePaint);
 
 
         }
