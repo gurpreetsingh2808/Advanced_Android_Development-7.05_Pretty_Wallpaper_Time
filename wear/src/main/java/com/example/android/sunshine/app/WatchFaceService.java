@@ -337,49 +337,47 @@ public class WatchFaceService extends CanvasWatchFaceService {
             // Draw the background.
             canvas.drawRect(0, 0, bounds.width(), bounds.height(), mBackgroundPaint);
 
-            // Draw the hours.
-            float x = mXOffset;
+            Log.d(TAG, "onDraw: bottom "+bounds.bottom);
+            Log.d(TAG, "onDraw: top "+bounds.top);
+            Log.d(TAG, "onDraw: left "+bounds.left);
+            Log.d(TAG, "onDraw: right "+bounds.right);
+            Log.d(TAG, "onDraw: center x "+bounds.centerX());
+            Log.d(TAG, "onDraw: center y "+bounds.centerY());
+
+            String dateText = String.format(Locale.getDefault(), "%1$tb %1$te, %1$ta", mCalendar);
+            float x = bounds.centerX() - (mDatePaint.measureText(dateText)/2);
+            float y = bounds.centerY() - (mHourPaint.measureText(dateText)/4);
+
+            Log.d(TAG, "onDraw: value of x "+x);
+            //  Draw the date
+            canvas.drawText(dateText, x, y, mDatePaint);
+
+            // Draw the time.
+            y = mYOffset + mDatePaint.measureText(dateText) ;
             String hourString = formatTwoDigitNumber(mCalendar.get(Calendar.HOUR_OF_DAY));
-            canvas.drawText(hourString, x, mYOffset, mHourPaint);
-            x += mHourPaint.measureText(hourString);
-            canvas.drawText(COLON_STRING, x, mYOffset, mColonPaint);
-            x += mColonWidth;
-
-            // Draw the minutes.
             String minuteString = formatTwoDigitNumber(mCalendar.get(Calendar.MINUTE));
-            canvas.drawText(minuteString, x, mYOffset, mMinutePaint);
-            //x += mColonWidth;
 
-            //  Draw date and month
-            float y = mYOffset;
-            y += mHourPaint.measureText(hourString);
-            //x += mMinutePaint.measureText(minuteString);
-            String dateText = String.format(Locale.getDefault(), "%1$tb %1$te", mCalendar);
-            canvas.drawText(dateText, mXOffset, y, mDatePaint);
+            String timeString = hourString + ":" +minuteString;
+            x = bounds.centerX() - (mHourPaint.measureText(timeString)/2);
+            canvas.drawText(timeString, x, bounds.centerY(), mHourPaint);
 
-            //  Draw day
-            y -= mDatePaint.measureText(dateText) / 3;
-            String dayText = String.format(Locale.getDefault(), "%1$ta", mCalendar);
-            canvas.drawText(dayText, mXOffset, y, mDatePaint);
 
             // draw weather text at x
 //Draw Icon and Temperatures
             if (maxTemp != null && minTemp != null) {
                 Log.d(TAG, "onDraw: max min temp not null");
 
-                float tempYOffset = mYOffset + getResources().getDimension(R.dimen.digital_date_text_margin_bottom);
+                x = bounds.centerX() - (mIconPaint.measureText(dateText)/2);
+                y = bounds.centerY() + (mHourPaint.measureText(dateText)/4);
                 //Icon
                 if (mIcon != null && !mLowBitAmbient)
-                    canvas.drawBitmap(mIcon, mXOffset - mIcon.getWidth() - mIcon.getWidth() / 4, tempYOffset - mIcon.getHeight() / 2, mIconPaint);
+                    canvas.drawBitmap(mIcon, x - mIcon.getWidth() - mIcon.getWidth() / 4, y - mIcon.getHeight() / 2, mIconPaint);
                 ////// canvas.drawBitmap(mIcon, centerX - mIcon.getWidth() - mIcon.getWidth() / 4, tempYOffset - mIcon.getHeight() / 2, mIconPaint);
                 //High temp
-                canvas.drawText(maxTemp, x, tempYOffset, mMaxPaint);
+                canvas.drawText(maxTemp +"   ", x, y, mMaxPaint);
                 //Low temp
                 float highTempSize = mMaxPaint.measureText(maxTemp);
-                ///////float highTempRightMargin = getResources().getDimension(R.dimen.digital_temp_text_margin_right);
-                ////////canvas.drawText(minTemp, centerX + highTempSize + highTempRightMargin, tempYOffset, mMinPaint);
-                //////////canvas.drawText(minTemp, centerX + highTempSize + 0.0f, tempYOffset, mMinPaint);
-                canvas.drawText(minTemp, mXOffset + highTempSize + 0.0f, tempYOffset, mMinPaint);
+                canvas.drawText("   "+minTemp, x + highTempSize + 0.0f, y, mMinPaint);
 
             }
             else {

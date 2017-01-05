@@ -5,8 +5,10 @@
 
     <uses-permission android:name="android.permission.WAKE_LOCK" />
 
-    <application android:allowBackup="true" android:icon="@mipmap/ic_launcher"
-        android:label="@string/app_name" android:supportsRtl="true"
+    <application android:allowBackup="true"
+        android:icon="@mipmap/ic_launcher"
+        android:label="@string/app_name"
+        android:supportsRtl="true"
         android:theme="@android:style/Theme.DeviceDefault">
         <uses-library android:name="com.google.android.wearable" android:required="false" />
 
@@ -34,6 +36,24 @@
         <meta-data
             android:name="com.google.android.gms.version"
             android:value="@integer/google_play_services_version" />
+
+    <service android:name="com.example.android.sunshine.app.WeatherListenerService">
+        <intent-filter>
+            <action android:name="com.google.android.gms.wearable.DATA_CHANGED"/>
+            <data
+                android:host="*"
+                android:path="/weather"
+                android:scheme="wear"/>
+        </intent-filter>
+        <intent-filter>
+            <action android:name="com.google.android.gms.wearable.DATA_CHANGED"/>
+            <data
+                android:host="*"
+                android:path="/image"
+                android:scheme="wear"/>
+        </intent-filter>
+    </service>
+
     </application>
 
 </manifest>
