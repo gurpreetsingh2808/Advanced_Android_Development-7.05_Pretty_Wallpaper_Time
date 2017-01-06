@@ -59,6 +59,7 @@ public class WeatherListenerService extends WearableListenerService {
 
     @Override
     public void onDataChanged(DataEventBuffer dataEventBuffer) {
+        Log.d(TAG, "onDataChanged: data changed");
         if (Log.isLoggable(TAG, Log.DEBUG)) {
             Log.d(TAG, "onDataChanged: " + dataEventBuffer);
         }
@@ -80,8 +81,10 @@ public class WeatherListenerService extends WearableListenerService {
         // Loop through the events and send a message
         // to the node that created the data item.
         for (DataEvent event : events) {
+            Log.d(TAG, "onDataChanged: for loop");
             if (event.getType() == DataEvent.TYPE_CHANGED &&
                     event.getDataItem().getUri().getPath().equals("/weather_data")) {
+                Log.d(TAG, "onDataChanged: weather change");
                 DataMapItem dataMapItem = DataMapItem.fromDataItem(event.getDataItem());
                 Intent intent = new Intent(ACTION_DATA);
                 Log.d(TAG, "onDataChanged: min tempo "+dataMapItem.getDataMap().getInt("MIN"));

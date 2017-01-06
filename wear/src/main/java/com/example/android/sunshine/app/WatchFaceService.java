@@ -9,6 +9,7 @@ import android.content.res.Resources;
 import android.graphics.Bitmap;
 import android.graphics.BitmapFactory;
 import android.graphics.Canvas;
+import android.graphics.Color;
 import android.graphics.Paint;
 import android.graphics.Rect;
 import android.graphics.Typeface;
@@ -93,7 +94,6 @@ public class WatchFaceService extends CanvasWatchFaceService {
         float mYOffset;
         int minTemp;
         int maxTemp;
-        Rect rect = new Rect();
 
         Date mDate;
 
@@ -350,7 +350,11 @@ public class WatchFaceService extends CanvasWatchFaceService {
                 max = maxTemp + "°";
 
             // Draw the background.
-            canvas.drawRect(0, 0, bounds.width(), bounds.height(), mBackgroundPaint);
+            if (isInAmbientMode()) {
+                canvas.drawColor(Color.BLACK);
+            } else {
+                canvas.drawRect(0, 0, bounds.width(), bounds.height(), mBackgroundPaint);
+            }
 
             float x = bounds.centerX() - (mDatePaint.measureText(dateText) / 2);
             float y = bounds.centerY() - (mHourPaint.measureText(dateText) / 4);
