@@ -81,12 +81,15 @@ public class WeatherListenerService extends WearableListenerService {
         // to the node that created the data item.
         for (DataEvent event : events) {
             if (event.getType() == DataEvent.TYPE_CHANGED &&
-                    event.getDataItem().getUri().getPath().equals("/weather")) {
+                    event.getDataItem().getUri().getPath().equals("/weather_data")) {
                 DataMapItem dataMapItem = DataMapItem.fromDataItem(event.getDataItem());
                 Intent intent = new Intent(ACTION_DATA);
+                Log.d(TAG, "onDataChanged: min tempo "+dataMapItem.getDataMap().getInt("MIN"));
+                Log.d(TAG, "onDataChanged: max tempo "+dataMapItem.getDataMap().getInt("MAX"));
+
                 intent.putExtra("MIN", dataMapItem.getDataMap().getInt("MIN"));
                 intent.putExtra("MAX", dataMapItem.getDataMap().getInt("MAX"));
-                LocalBroadcastManager.getInstance(this).sendBroadcast(intent);
+                LocalBroadcastManager.getInstance(WeatherListenerService.this).sendBroadcast(intent);
 
             } else if (event.getType() == DataEvent.TYPE_CHANGED &&
                     event.getDataItem().getUri().getPath().equals("/image")) {
