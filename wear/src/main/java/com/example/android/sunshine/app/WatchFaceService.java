@@ -37,7 +37,7 @@ import java.util.concurrent.TimeUnit;
 public class WatchFaceService extends CanvasWatchFaceService {
 
     private static final String TAG = CanvasWatchFaceService.class.getSimpleName();
-    
+
     private static final Typeface BOLD_TYPEFACE =
             Typeface.create(Typeface.SANS_SERIF, Typeface.BOLD);
     private static final Typeface NORMAL_TYPEFACE =
@@ -57,11 +57,10 @@ public class WatchFaceService extends CanvasWatchFaceService {
     }
 
     /* implement service callback methods */
-    private class Engine extends CanvasWatchFaceService.Engine
-    {
+    private class Engine extends CanvasWatchFaceService.Engine {
 
-        private static final int DEFAULT_MAX = 20;
-        private static final int DEFAULT_MIN = 7;
+        private static final int DEFAULT_MAX = 0;
+        private static final int DEFAULT_MIN = 0;
 
         BroadcastReceiver tempReceiver;
         BroadcastReceiver imageReceiver;
@@ -169,6 +168,8 @@ public class WatchFaceService extends CanvasWatchFaceService {
         public void onCreate(SurfaceHolder holder) {
             super.onCreate(holder);
 
+            Log.d(TAG, "onCreate: min temp before "+minTemp);
+
             tempReceiver = new BroadcastReceiver() {
                 @Override
                 public void onReceive(Context context, Intent intent) {
@@ -178,6 +179,8 @@ public class WatchFaceService extends CanvasWatchFaceService {
                     invalidate();
                 }
             };
+
+            Log.d(TAG, "onCreate: min temp after "+minTemp);
             IntentFilter tempFilter = new IntentFilter(WeatherListenerService.ACTION_DATA);
             LocalBroadcastManager.getInstance(WatchFaceService.this).registerReceiver(tempReceiver, tempFilter);
             imageReceiver = new BroadcastReceiver() {
@@ -217,7 +220,7 @@ public class WatchFaceService extends CanvasWatchFaceService {
             mIconPaint = new Paint();
 
             mMaxPaint = createTextPaint(mInteractiveHourDigitsColor, BOLD_TYPEFACE);
-            mMinPaint = createTextPaint(mInteractiveMinuteDigitsColor);
+            mMinPaint = createTextPaint(resources.getColor(R.color.digital_date));
 
 ///            ...
 
@@ -267,6 +270,7 @@ public class WatchFaceService extends CanvasWatchFaceService {
             mHourPaint.setTextSize(textSize);
             mMinutePaint.setTextSize(textSize);
             mColonPaint.setTextSize(textSize);
+            mMinPaint.setTextSize(resources.getDimension(R.dimen.small_text_size));
             mColonWidth = mColonPaint.measureText(COLON_STRING);
         }
 
@@ -335,53 +339,51 @@ public class WatchFaceService extends CanvasWatchFaceService {
             String dateText = String.format(Locale.getDefault(), "%1$tb %1$te, %1$ta", mCalendar);
             String hourString = formatTwoDigitNumber(mCalendar.get(Calendar.HOUR_OF_DAY));
             String minuteString = formatTwoDigitNumber(mCalendar.get(Calendar.MINUTE));
-            String timeString = hourString + ":" +minuteString;
+            String timeString = hourString + ":" + minuteString;
 
             String min = "";
             String max = "";
-            if (minTemp != DEFAULT_MIN)
+            int iconWidth = 0;
+            //if (minTemp != DEFAULT_MIN)
                 min = minTemp + "°";
-            if (maxTemp != DEFAULT_MAX)
+            //if (maxTemp != DEFAULT_MAX)
                 max = maxTemp + "°";
 
             // Draw the background.
             canvas.drawRect(0, 0, bounds.width(), bounds.height(), mBackgroundPaint);
 
-            float x = bounds.centerX() - (mDatePaint.measureText(dateText)/2);
-            float y = bounds.centerY() - (mHourPaint.measureText(dateText)/4);
+            float x = bounds.centerX() - (mDatePaint.measureText(dateText) / 2);
+            float y = bounds.centerY() - (mHourPaint.measureText(dateText) / 4);
 
             //  Draw the date
             canvas.drawText(dateText, x, y, mDatePaint);
 
             // Draw the time.
-            y = mYOffset + mDatePaint.measureText(dateText) ;
-            x = bounds.centerX() - (mHourPaint.measureText(timeString)/2);
+            x = bounds.centerX() - (mHourPaint.measureText(timeString) / 2);
             canvas.drawText(timeString, x, bounds.centerY(), mHourPaint);
 
 
-//Draw Icon and Temperatures
-                Log.d(TAG, "onDraw: max min temp not null");
+            //Draw Icon and Temperatures
+            Log.d(TAG, "onDraw: max min temp not null");
 
-                //x = bounds.centerX() - (mIconPaint.measureText(dateText)/2);
-                y = bounds.centerY() + (mHourPaint.measureText(dateText)/4);
-                //Icon
-
-
-            Log.d(TAG, "onDraw: maxtemp "+maxTemp);
-                //High temp
-                canvas.drawText(maxTemp +"   ", x, y, mDatePaint);
-
+            y = bounds.centerY() + (mHourPaint.measureText(dateText) / 4);
+            //Icon
             // draw weather icon at x
-                float highTempSize = mDatePaint.measureText(Integer.toString(maxTemp));
             if (bitmap != null && !mLowBitAmbient) {
-                canvas.drawBitmap(bitmap, x + highTempSize /*+ bitmap.getWidth() + bitmap.getWidth() / 4*/, y - bitmap.getHeight() / 2, mIconPaint);
-                ////// canvas.drawBitmap(mIcon, centerX - mIcon.getWidth() - mIcon.getWidth() / 4, tempYOffset - mIcon.getHeight() / 2, mIconPaint);
+                canvas.drawBitmap(bitmap, x, y - bitmap.getHeight() / 2, mIconPaint);
                 Log.d(TAG, "onDraw: draw bitmap");
             }
 
-            //Low temp
-            canvas.drawText("   "+minTemp, bounds.right - highTempSize + 0.0f, y, mMinPaint);
+            Log.d(TAG, "onDraw: maxtemp " + maxTemp);
+            // draw weather icon at x
+            float highTempSize = mDatePaint.measureText(Integer.toString(maxTemp));
 
+            iconWidth = bitmap.getWidth();
+            //High temp
+            canvas.drawText("   " + max, x + iconWidth, y, mDatePaint);
+
+            //Low temp
+            canvas.drawText("  " + min, x + iconWidth + mDatePaint.measureText("   "), y + highTempSize, mMinPaint);
 
         }
 
