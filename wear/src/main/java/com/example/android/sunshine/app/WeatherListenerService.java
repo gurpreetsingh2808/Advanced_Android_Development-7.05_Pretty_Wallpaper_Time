@@ -84,6 +84,9 @@ public class WeatherListenerService extends WearableListenerService {
                     event.getDataItem().getUri().getPath().equals("/weather")) {
                 DataMapItem dataMapItem = DataMapItem.fromDataItem(event.getDataItem());
                 Intent intent = new Intent(ACTION_DATA);
+                Log.d(TAG, "onDataChanged: min tempo "+dataMapItem.getDataMap().getInt("MIN"));
+                Log.d(TAG, "onDataChanged: max tempo "+dataMapItem.getDataMap().getInt("MAX"));
+
                 intent.putExtra("MIN", dataMapItem.getDataMap().getInt("MIN"));
                 intent.putExtra("MAX", dataMapItem.getDataMap().getInt("MAX"));
                 LocalBroadcastManager.getInstance(this).sendBroadcast(intent);
