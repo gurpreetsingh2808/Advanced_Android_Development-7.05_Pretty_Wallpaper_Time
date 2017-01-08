@@ -37,6 +37,7 @@ public class Utility {
         return prefs.getString(context.getString(R.string.pref_location_key),
                 context.getString(R.string.pref_location_default));
     }
+/*
 
     public static boolean isLatLngAvailable(Context context) {
         SharedPreferences prefs
@@ -58,6 +59,7 @@ public class Utility {
         return prefs.getFloat(context.getString(R.string.pref_location_longitude),
                 DEFAULT_LATLONG);
     }
+*/
 
 
     public static boolean isMetric(Context context) {
