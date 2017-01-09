@@ -43,9 +43,6 @@ import com.example.android.sunshine.app.sync.SunshineSyncAdapter;
 public class SettingsActivity extends PreferenceActivity
         implements Preference.OnPreferenceChangeListener, SharedPreferences.OnSharedPreferenceChangeListener {
 
-    protected final static int PLACE_PICKER_REQUEST = 9090;
-    private ImageView mAttribution;
-
     @Override
     public void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
@@ -57,8 +54,8 @@ public class SettingsActivity extends PreferenceActivity
         bindPreferenceSummaryToValue(findPreference(getString(R.string.pref_location_key)));
         bindPreferenceSummaryToValue(findPreference(getString(R.string.pref_units_key)));
         bindPreferenceSummaryToValue(findPreference(getString(R.string.pref_art_pack_key)));
-
-        /*// If we are using a PlacePicker location, we need to show attributions.
+/*
+        // If we are using a PlacePicker location, we need to show attributions.
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.HONEYCOMB) {
             mAttribution = new ImageView(this);
             mAttribution.setImageResource(R.drawable.powered_by_google_light);
@@ -68,8 +65,7 @@ public class SettingsActivity extends PreferenceActivity
             }
 
             setListFooter(mAttribution);
-        }
-*/
+        }*/
     }
 
     // Registers a shared preference change listener that gets notified when preferences change
