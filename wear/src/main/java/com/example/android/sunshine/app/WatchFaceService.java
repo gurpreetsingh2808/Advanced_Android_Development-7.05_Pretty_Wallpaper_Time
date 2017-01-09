@@ -4,31 +4,38 @@ import android.content.BroadcastReceiver;
 import android.content.Context;
 import android.content.Intent;
 import android.content.IntentFilter;
-import android.content.SharedPreferences;
 import android.content.res.Resources;
 import android.graphics.Bitmap;
-import android.graphics.BitmapFactory;
 import android.graphics.Canvas;
 import android.graphics.Color;
 import android.graphics.Paint;
 import android.graphics.Rect;
 import android.graphics.Typeface;
+import android.graphics.drawable.BitmapDrawable;
+import android.graphics.drawable.Drawable;
 import android.os.Bundle;
 import android.os.Handler;
 import android.os.Message;
-import android.preference.PreferenceManager;
-import android.support.v4.content.LocalBroadcastManager;
+import android.support.annotation.NonNull;
+import android.support.annotation.Nullable;
 import android.support.wearable.watchface.CanvasWatchFaceService;
 import android.support.wearable.watchface.WatchFaceStyle;
 import android.util.Log;
 import android.view.SurfaceHolder;
 import android.view.WindowInsets;
 
-import com.wear.R;
+import com.google.android.gms.common.ConnectionResult;
+import com.google.android.gms.common.api.GoogleApiClient;
+import com.google.android.gms.common.api.ResultCallback;
+import com.google.android.gms.wearable.DataApi;
+import com.google.android.gms.wearable.DataEvent;
+import com.google.android.gms.wearable.DataEventBuffer;
+import com.google.android.gms.wearable.DataItem;
+import com.google.android.gms.wearable.DataItemBuffer;
+import com.google.android.gms.wearable.DataMap;
+import com.google.android.gms.wearable.DataMapItem;
+import com.google.android.gms.wearable.Wearable;
 
-import java.io.File;
-import java.io.FileInputStream;
-import java.io.FileNotFoundException;
 import java.util.Calendar;
 import java.util.Date;
 import java.util.Locale;
@@ -57,22 +64,23 @@ public class WatchFaceService extends CanvasWatchFaceService {
         return new Engine();
     }
 
+
     /* implement service callback methods */
-    private class Engine extends CanvasWatchFaceService.Engine {
+    private class Engine extends CanvasWatchFaceService.Engine implements GoogleApiClient.ConnectionCallbacks, GoogleApiClient.OnConnectionFailedListener {
 
-        private static final int DEFAULT_MAX = 0;
-        private static final int DEFAULT_MIN = 0;
-
-        BroadcastReceiver tempReceiver;
-        BroadcastReceiver imageReceiver;
-        Bitmap bitmap;
-        Bitmap ambientBitmap;
+        Bitmap weatherIcon;
+        Double maxTemp = 0d;
+        Double minTemp = 0d;
+        String desc = "";
+        int weatherId = 0;
 
         static final String COLON_STRING = ":";
         static final int MSG_UPDATE_TIME = 0;
 
         private Calendar mCalendar;
         private boolean mRegisteredTimeZoneReceiver = false;
+
+        GoogleApiClient googleApiClient;
 
         // device features
         private boolean mAmbient;
@@ -92,8 +100,6 @@ public class WatchFaceService extends CanvasWatchFaceService {
         float mColonWidth;
         float mXOffset;
         float mYOffset;
-        int minTemp;
-        int maxTemp;
 
         Date mDate;
 
@@ -134,65 +140,12 @@ public class WatchFaceService extends CanvasWatchFaceService {
             }
         };
 
-        // service methods (see other sections)
-
-        private void setTemp(int min, int max) {
-            PreferenceManager.getDefaultSharedPreferences(WatchFaceService.this).edit()
-                    .putInt("MIN", min)
-                    .putInt("MAX", max)
-                    .apply();
-        }
-
-        private void loadTemp() {
-            SharedPreferences preferences = PreferenceManager.getDefaultSharedPreferences(WatchFaceService.this);
-            minTemp = preferences.getInt("MIN", DEFAULT_MIN);
-            maxTemp = preferences.getInt("MAX", DEFAULT_MAX);
-        }
-
-        private void loadBitmap() {
-            File cacheDir = getBaseContext().getCacheDir();
-            File f = new File(cacheDir, "image.jpg");
-            FileInputStream fis;
-            try {
-                fis = new FileInputStream(f);
-                bitmap = BitmapFactory.decodeStream(fis);
-                ambientBitmap = Util.toGrayscale(bitmap);
-                invalidate();
-            } catch (FileNotFoundException e) {
-                e.printStackTrace();
-            }
-        }
-
 
         @Override
         public void onCreate(SurfaceHolder holder) {
             super.onCreate(holder);
 
             Log.d(TAG, "onCreate: min temp before "+minTemp);
-
-            tempReceiver = new BroadcastReceiver() {
-                @Override
-                public void onReceive(Context context, Intent intent) {
-                    minTemp = intent.getIntExtra("MIN", DEFAULT_MIN);
-                    maxTemp = intent.getIntExtra("MAX", DEFAULT_MAX);
-                    setTemp(minTemp, maxTemp);
-                    invalidate();
-                }
-            };
-
-            Log.d(TAG, "onCreate: min temp after "+minTemp);
-            IntentFilter tempFilter = new IntentFilter(WeatherListenerService.ACTION_DATA);
-            LocalBroadcastManager.getInstance(WatchFaceService.this).registerReceiver(tempReceiver, tempFilter);
-            imageReceiver = new BroadcastReceiver() {
-                @Override
-                public void onReceive(Context context, Intent intent) {
-                    loadBitmap();
-                }
-            };
-            loadBitmap();
-            IntentFilter imageFilter = new IntentFilter(WeatherListenerService.ACTION_IMAGE);
-            LocalBroadcastManager.getInstance(WatchFaceService.this).registerReceiver(imageReceiver, imageFilter);
-
 
             /* initialize your watch face */
             // configure the system UI
@@ -208,7 +161,7 @@ public class WatchFaceService extends CanvasWatchFaceService {
             // load the background image
             Resources resources = WatchFaceService.this.getResources();
             mYOffset = resources.getDimension(R.dimen.digital_y_offset);
-            loadTemp();
+            //loadTemp();
 
             // create graphic styles
             mBackgroundPaint = new Paint();
@@ -228,15 +181,17 @@ public class WatchFaceService extends CanvasWatchFaceService {
             mCalendar = Calendar.getInstance();
             mDate = new Date();
 //////            initFormats();
+            googleApiClient = new GoogleApiClient.Builder(WatchFaceService.this)
+                    .addApi(Wearable.API)
+                    .addConnectionCallbacks(this)
+                    .addOnConnectionFailedListener(this)
+                    .build();
+            googleApiClient.connect();
         }
 
         @Override
         public void onDestroy() {
             mUpdateTimeHandler.removeMessages(MSG_UPDATE_TIME);
-            if (imageReceiver != null)
-                LocalBroadcastManager.getInstance(WatchFaceService.this).unregisterReceiver(imageReceiver);
-            if (tempReceiver != null)
-                LocalBroadcastManager.getInstance(WatchFaceService.this).unregisterReceiver(tempReceiver);
             super.onDestroy();
         }
 
@@ -334,7 +289,6 @@ public class WatchFaceService extends CanvasWatchFaceService {
             long now = System.currentTimeMillis();
             mCalendar.setTimeInMillis(now);
             mDate.setTime(now);
-            Log.d(TAG, "onDraw: time set");
 
             String dateText = String.format(Locale.getDefault(), "%1$tb %1$te, %1$ta", mCalendar);
             String hourString = formatTwoDigitNumber(mCalendar.get(Calendar.HOUR_OF_DAY));
@@ -344,9 +298,7 @@ public class WatchFaceService extends CanvasWatchFaceService {
             String min = "";
             String max = "";
             int iconWidth = 0;
-            //if (minTemp != DEFAULT_MIN)
                 min = minTemp + "°";
-            //if (maxTemp != DEFAULT_MAX)
                 max = maxTemp + "°";
 
             // Draw the background.
@@ -368,26 +320,27 @@ public class WatchFaceService extends CanvasWatchFaceService {
 
 
             //Draw Icon and Temperatures
-            Log.d(TAG, "onDraw: max min temp not null");
 
             y = bounds.centerY() + (mHourPaint.measureText(dateText) / 4);
             //Icon
             // draw weather icon at x
-            if (bitmap != null && !mLowBitAmbient) {
-                canvas.drawBitmap(bitmap, x, y - bitmap.getHeight() / 2, mIconPaint);
-                Log.d(TAG, "onDraw: draw bitmap");
+            if (weatherIcon != null && !mLowBitAmbient) {
+                canvas.drawBitmap(weatherIcon, x-mDatePaint.measureText("   "), y - weatherIcon.getHeight() / 2, mIconPaint);
+                Log.d(TAG, "onDraw: draw weatherIcon");
             }
 
             Log.d(TAG, "onDraw: maxtemp " + maxTemp);
             // draw weather icon at x
-            float highTempSize = mDatePaint.measureText(Integer.toString(maxTemp));
+            float highTempSize = mDatePaint.measureText(Double.toString(maxTemp));
 
-            iconWidth = bitmap.getWidth();
+            if(weatherIcon != null) {
+                iconWidth = weatherIcon.getWidth();
+            }
             //High temp
-            canvas.drawText("   " + max, x + iconWidth, y, mDatePaint);
+            canvas.drawText(max, x + iconWidth, y, mDatePaint);
 
             //Low temp
-            canvas.drawText("  " + min, x + iconWidth + mDatePaint.measureText("   "), y + highTempSize, mMinPaint);
+            canvas.drawText(min, x + iconWidth + mDatePaint.measureText(" "), y + (highTempSize/2), mMinPaint);
 
         }
 
@@ -401,12 +354,57 @@ public class WatchFaceService extends CanvasWatchFaceService {
                 mCalendar.setTimeZone(TimeZone.getDefault());
                 invalidate();
             } else {
+                if (googleApiClient != null && googleApiClient.isConnected()) {
+                    Wearable.DataApi.removeListener(googleApiClient, this.onDataChangedListener);
+                    googleApiClient.disconnect();
+                }
                 unregisterReceiver();
             }
 
             // Whether the timer should be running depends on whether we're visible and
             // whether we're in ambient mode, so we may need to start or stop the timer
             updateTimer();
+        }
+
+        private final DataApi.DataListener onDataChangedListener = new DataApi.DataListener() {
+            @Override
+            public void onDataChanged(DataEventBuffer dataEvents) {
+                for (DataEvent event : dataEvents) {
+                    if (event.getType() == DataEvent.TYPE_CHANGED) {
+                        DataItem item = event.getDataItem();
+                        processConfigurationFor(item);
+                    }
+                }
+
+                dataEvents.release();
+                invalidate();
+            }
+        };
+
+        private void processConfigurationFor(DataItem item) {
+            if ("/weather_data".equals(item.getUri().getPath())) {
+                DataMap dataMap = DataMapItem.fromDataItem(item).getDataMap();
+                if (dataMap.containsKey("HIGH_TEMP")) {
+                    maxTemp = dataMap.getDouble("HIGH_TEMP");
+                    Log.e("HighTemp", maxTemp.toString());
+                }
+
+                if (dataMap.containsKey("LOW_TEMP")) {
+                    minTemp = dataMap.getDouble("LOW_TEMP");
+                    Log.e("LowTemp", minTemp.toString());
+                }
+
+                if (dataMap.containsKey("DESC")) {
+                    desc = dataMap.getString("DESC");
+                }
+
+                if (dataMap.containsKey("ICON")) {
+                    weatherId = dataMap.getInt("ICON");
+                    updateWeatherIcon();
+                    Log.e("Icon", String.valueOf(weatherId));
+                }
+                invalidate();
+            }
         }
 
         private void registerReceiver() {
@@ -442,6 +440,67 @@ public class WatchFaceService extends CanvasWatchFaceService {
             return isVisible() && !mAmbient;
         }
 
-    }
+        @Override
+        public void onConnected(@Nullable Bundle bundle) {
+            Log.e(TAG, "Connected");
+            Wearable.DataApi.addListener(googleApiClient, onDataChangedListener);
+            Wearable.DataApi.getDataItems(googleApiClient).setResultCallback(onConnectedResultCallback);
+            invalidate();
+        }
 
+        @Override
+        public void onConnectionSuspended(int i) {
+            Log.e(TAG, "Connection Suspended");
+        }
+
+        @Override
+        public void onConnectionFailed(@NonNull ConnectionResult connectionResult) {
+
+        }
+
+        private void updateWeatherIcon() {
+            Resources resources = WatchFaceService.this.getResources();
+            Drawable weatherBitmap;
+
+            if (weatherId >= 200 && weatherId <= 232) {
+                weatherBitmap = resources.getDrawable(R.drawable.ic_storm, null);
+            } else if (weatherId >= 300 && weatherId <= 321) {
+                weatherBitmap = resources.getDrawable(R.drawable.ic_light_rain, null);
+            } else if (weatherId >= 500 && weatherId <= 504) {
+                weatherBitmap = resources.getDrawable(R.drawable.ic_rain, null);
+            } else if (weatherId == 511) {
+                weatherBitmap = resources.getDrawable(R.drawable.ic_snow, null);
+            } else if (weatherId >= 520 && weatherId <= 531) {
+                weatherBitmap = resources.getDrawable(R.drawable.ic_rain, null);
+            } else if (weatherId >= 600 && weatherId <= 622) {
+                weatherBitmap = resources.getDrawable(R.drawable.ic_snow, null);
+            } else if (weatherId >= 701 && weatherId <= 761) {
+                weatherBitmap = resources.getDrawable(R.drawable.ic_fog, null);
+            } else if (weatherId == 761 || weatherId == 781) {
+                weatherBitmap = resources.getDrawable(R.drawable.ic_storm, null);
+            } else if (weatherId == 800) {
+                weatherBitmap = resources.getDrawable(R.drawable.ic_clear, null);
+            } else if (weatherId == 801) {
+                weatherBitmap = resources.getDrawable(R.drawable.ic_light_clouds, null);
+            } else if (weatherId >= 802 && weatherId <= 804) {
+                weatherBitmap = resources.getDrawable(R.drawable.ic_cloudy, null);
+            } else { //default
+                weatherBitmap = resources.getDrawable(R.drawable.ic_clear, null);
+            }
+
+            weatherIcon = ((BitmapDrawable) weatherBitmap).getBitmap();
+        }
+        private final ResultCallback<DataItemBuffer> onConnectedResultCallback = new ResultCallback<DataItemBuffer>() {
+            @Override
+            public void onResult(DataItemBuffer dataItems) {
+                for (DataItem item : dataItems) {
+                    processConfigurationFor(item);
+                }
+
+                dataItems.release();
+                invalidate();
+            }
+        };
+
+    }
 }
